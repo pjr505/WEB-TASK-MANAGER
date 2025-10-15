@@ -1,0 +1,231 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { FaEdit, FaTrash, FaPlus, FaMoon, FaSun } from 'react-icons/fa';
+
+function App() {
+  const [tasks, setTasks] = useState([]);
+  const [form, setForm] = useState({
+    title: '', description: '', dueDate: '', status: 'Pending'
+  });
+  const [editId, setEditId] = useState(null);
+  const [filter, setFilter] = useState('All');
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Fetch all tasks
+  const getTasks = async () => {
+    const res = await axios.get('http://localhost:5000/api/tasks');
+    setTasks(res.data);
+  };
+
+  useEffect(() => {
+    getTasks();
+  }, []);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (editId) {
+      await axios.put(`http://localhost:5000/api/tasks/${editId}`, form);
+      setEditId(null);
+    } else {
+      await axios.post('http://localhost:5000/api/tasks', form);
+    }
+    setForm({ title: '', description: '', dueDate: '', status: 'Pending' });
+    getTasks();
+  };
+
+  const handleEdit = (task) => {
+    setForm(task);
+    setEditId(task._id);
+  };
+
+  const handleDelete = async (id) => {
+    await axios.delete(`http://localhost:5000/api/tasks/${id}`);
+    getTasks();
+  };
+
+  // Filtered list
+  const filteredTasks = filter === 'All'
+    ? tasks
+    : tasks.filter(task => task.status === filter);
+
+  const getRowStyle = (task) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (task.status === 'Completed') return { backgroundColor: '#c8f7c5' };
+    if (task.dueDate < today) return { backgroundColor: '#f7c5c5' };
+    if (task.status === 'Pending') return { backgroundColor: '#fff7c5' };
+    return {};
+  };
+
+  // Theme + background
+  const themeStyles = {
+    minHeight: '100vh',
+    textAlign: 'center',
+    padding: '40px',
+    fontFamily: 'Segoe UI, sans-serif',
+    transition: 'all 0.3s',
+    color: darkMode ? '#f5f5f5' : '#000',
+    backgroundImage: `url('https://images.unsplash.com/photo-1581091215363-9ed8a66f7e49?auto=format&fit=crop&w=1470&q=80')`,
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+    backgroundBlendMode: 'overlay',
+    backgroundColor: darkMode ? 'rgba(18,18,18,0.6)' : 'rgba(0,119,182,0.3)'
+  };
+
+  // Button styles
+  const buttonStyle = {
+    padding: '10px 20px',
+    margin: '5px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    transition: 'all 0.3s',
+    boxShadow: '0px 3px 6px rgba(0,0,0,0.2)'
+  };
+
+  const addButtonStyle = { ...buttonStyle, backgroundColor: '#00b4d8', color: 'white' };
+  const editButtonStyle = { ...buttonStyle, backgroundColor: '#0077b6', color: 'white' };
+  const deleteButtonStyle = { ...buttonStyle, backgroundColor: '#d90429', color: 'white' };
+  const themeButtonStyle = { ...buttonStyle, backgroundColor: darkMode ? '#ffb703' : '#023e8a', color: 'white' };
+
+  // Button hover effects
+  const handleHover = (e, scale = 1.05) => e.currentTarget.style.transform = `scale(${scale})`;
+  const handleLeave = (e) => e.currentTarget.style.transform = 'scale(1)';
+
+  return (
+    <div style={themeStyles}>
+      <h1 style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '20px' }}>📘 Student Task Manager</h1>
+
+      <button
+        style={themeButtonStyle}
+        onClick={() => setDarkMode(!darkMode)}
+        onMouseEnter={e => handleHover(e)}
+        onMouseLeave={e => handleLeave(e)}
+      >
+        {darkMode ? <FaSun /> : <FaMoon />} Toggle {darkMode ? 'Light' : 'Dark'} Mode
+      </button>
+
+      <form onSubmit={handleSubmit} style={{ marginBottom: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', width: '90%', gap: '20px' }}>
+          <input
+            name="title"
+            placeholder="Title"
+            value={form.title}
+            onChange={handleChange}
+            required
+            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+          <textarea
+            name="description"
+            placeholder="Description"
+            value={form.description}
+            onChange={handleChange}
+            required
+            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+        </div>
+        <br />
+        <input
+          type="date"
+          name="dueDate"
+          value={form.dueDate}
+          onChange={handleChange}
+          required
+          style={{ padding: '10px', width: '200px', borderRadius: '6px', border: '1px solid #ccc' }}
+        />
+        <br />
+        <select name="status" value={form.status} onChange={handleChange} style={{ padding: '10px', width: '200px', borderRadius: '6px', border: '1px solid #ccc' }}>
+          <option>Pending</option>
+          <option>Completed</option>
+        </select>
+        <br />
+        <button
+          type="submit"
+          style={addButtonStyle}
+          onMouseEnter={e => handleHover(e)}
+          onMouseLeave={e => handleLeave(e)}
+        >
+          <FaPlus /> {editId ? 'Update Task' : 'Add Task'}
+        </button>
+      </form>
+
+      <div>
+        <label><b>Filter: </b></label>
+        <select onChange={(e) => setFilter(e.target.value)} value={filter} style={{ padding: '5px', borderRadius: '5px' }}>
+          <option>All</option>
+          <option>Pending</option>
+          <option>Completed</option>
+        </select>
+      </div>
+
+      <h3 style={{ marginTop: '30px' }}>All Tasks:</h3>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <table
+          border="1"
+          cellPadding="10"
+          style={{
+            backgroundColor: darkMode ? '#333' : 'white',
+            width: '90%',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0px 4px 10px rgba(0,0,0,0.3)'
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: darkMode ? '#555' : '#d9eaff', color: darkMode ? 'white' : 'black' }}>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTasks.map(task => (
+              <tr key={task._id} style={getRowStyle(task)}>
+                <td>{task.title}</td>
+                <td>{task.description}</td>
+                <td>{task.dueDate}</td>
+                <td>{task.status}</td>
+                <td>
+                  <button
+                    onClick={() => handleEdit(task)}
+                    style={editButtonStyle}
+                    onMouseEnter={e => handleHover(e)}
+                    onMouseLeave={e => handleLeave(e)}
+                  >
+                    <FaEdit /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(task._id)}
+                    style={deleteButtonStyle}
+                    onMouseEnter={e => handleHover(e)}
+                    onMouseLeave={e => handleLeave(e)}
+                  >
+                    <FaTrash /> Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {filteredTasks.length === 0 && (
+              <tr>
+                <td colSpan="5">No tasks found for this filter.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default App;

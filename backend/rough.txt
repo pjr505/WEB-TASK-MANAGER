@@ -1,0 +1,206 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [tasks, setTasks] = useState([]);
+  const [form, setForm] = useState({
+    title: '', description: '', dueDate: '', status: 'Pending'
+  });
+  const [editId, setEditId] = useState(null);
+  const [filter, setFilter] = useState('All');
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Fetch all tasks
+  const getTasks = async () => {
+    const res = await axios.get('http://localhost:5000/api/tasks');
+    setTasks(res.data);
+  };
+
+  useEffect(() => {
+    getTasks();
+  }, []);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (editId) {
+      await axios.put(`http://localhost:5000/api/tasks/${editId}`, form);
+      setEditId(null);
+    } else {
+      await axios.post('http://localhost:5000/api/tasks', form);
+    }
+    setForm({ title: '', description: '', dueDate: '', status: 'Pending' });
+    getTasks();
+  };
+
+  const handleEdit = (task) => {
+    setForm(task);
+    setEditId(task._id);
+  };
+
+  const handleDelete = async (id) => {
+    await axios.delete(`http://localhost:5000/api/tasks/${id}`);
+    getTasks();
+  };
+
+  // Filtered list
+  const filteredTasks = filter === 'All'
+    ? tasks
+    : tasks.filter(task => task.status === filter);
+
+  const getRowStyle = (task) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    if (task.status === 'Completed') {
+      return { backgroundColor: '#c8f7c5' }; // green
+    } else if (task.dueDate < today) {
+      return { backgroundColor: '#f7c5c5' }; // red
+    } else if (task.status === 'Pending') {
+      return { backgroundColor: '#fff7c5' }; // yellow
+    } else {
+      return {};
+    }
+  };
+
+  // Theme styles
+  const themeStyles = {
+    backgroundColor: darkMode ? '#121212' : '#0077b6',
+    color: darkMode ? '#f5f5f5' : '#000',
+    minHeight: '100vh',
+    textAlign: 'center',
+    padding: '40px',
+    fontFamily: 'Segoe UI, sans-serif',
+    transition: 'all 0.3s'
+  };
+
+  const buttonStyle = {
+    padding: '10px 20px',
+    margin: '5px',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: '0.2s',
+  };
+
+  const addButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#00b4d8',
+    color: 'white'
+  };
+
+  const editButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#0077b6',
+    color: 'white'
+  };
+
+  const deleteButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#d90429',
+    color: 'white'
+  };
+
+  const themeButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: darkMode ? '#ffb703' : '#023e8a',
+    color: 'white'
+  };
+
+  return (
+    <div style={themeStyles}>
+      <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>📘 Student Task Manager</h1>
+
+      <button style={themeButtonStyle} onClick={() => setDarkMode(!darkMode)}>
+        Toggle {darkMode ? 'Light' : 'Dark'} Mode
+      </button>
+
+      <form onSubmit={handleSubmit} style={{ marginBottom: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', width: '90%', gap: '20px' }}>
+          <input
+            name="title"
+            placeholder="Title"
+            value={form.title}
+            onChange={handleChange}
+            required
+            style={{ flex: 1, padding: '10px' }}
+          />
+          <textarea
+            name="description"
+            placeholder="Description"
+            value={form.description}
+            onChange={handleChange}
+            required
+            style={{ flex: 1, padding: '10px' }}
+          />
+        </div>
+        <br />
+        <input
+          type="date"
+          name="dueDate"
+          value={form.dueDate}
+          onChange={handleChange}
+          required
+          style={{ padding: '10px', width: '200px' }}
+        />
+        <br />
+        <select name="status" value={form.status} onChange={handleChange} style={{ padding: '10px', width: '200px' }}>
+          <option>Pending</option>
+          <option>Completed</option>
+        </select>
+        <br />
+        <button type="submit" style={addButtonStyle}>
+          {editId ? 'Update Task' : 'Add Task'}
+        </button>
+      </form>
+
+      <div>
+        <label><b>Filter: </b></label>
+        <select onChange={(e) => setFilter(e.target.value)} value={filter}>
+          <option>All</option>
+          <option>Pending</option>
+          <option>Completed</option>
+        </select>
+      </div>
+
+      <h3 style={{ marginTop: '30px' }}>All Tasks:</h3>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <table border="1" cellPadding="10" style={{ backgroundColor: darkMode ? '#333' : 'white', width: '90%' }}>
+          <thead>
+            <tr style={{ backgroundColor: darkMode ? '#555' : '#d9eaff', color: darkMode ? 'white' : 'black' }}>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTasks.map(task => (
+              <tr key={task._id} style={getRowStyle(task)}>
+                <td>{task.title}</td>
+                <td>{task.description}</td>
+                <td>{task.dueDate}</td>
+                <td>{task.status}</td>
+                <td>
+                  <button onClick={() => handleEdit(task)} style={editButtonStyle}>Edit</button>
+                  <button onClick={() => handleDelete(task._id)} style={deleteButtonStyle}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {filteredTasks.length === 0 && (
+              <tr>
+                <td colSpan="5">No tasks found for this filter.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default App;
